@@ -134,6 +134,7 @@ WCS 2.0 предоставляет новые возможности, напри
 
 ---
 # GRASS GIS 
+https://grass.osgeo.org/
 
 GRASS GIS изначально (1982 г.) создавалась как растровая ГИС, сейчас это ГИС общего назначения.
 
@@ -199,6 +200,7 @@ r.mapcalc "ndvi = (r.nir - r.red)/(r.nir + r.red)"
 
 ---
 # Расширение PostGIS
+http://postgis.net/
 
 PostGIS Raster начинался как отдельный подпроект, начиная с PostGIS 2.0 был интегрирован в основной код расширения.
 Часто используется название PostGIS WKT Raster. Поддерживается:
@@ -253,6 +255,10 @@ PgBouncer – менеджер соединений для PostgreSQL: https://d
 3. Сложности с администрированием (настройки безопасности и т.п.).
 4. Снижение скорости обработки по сравнению с хранением в БД.
 
+???
+Влияние размеров тайлов на производительность PostGIS
+https://duncanjg.wordpress.com/2013/09/21/effect-of-tile-size-and-data-storage-on-postgis-raster-query-times/
+
 ---
 # Примеры
 Импорт файлов tif в таблицу landsat БД raster (тайлы, индекс и др):
@@ -294,14 +300,66 @@ CREATE TABLE ndvi AS
 
 
 ---
-???
-# Rasdaman (raster data manager)
-Rasdaman ("raster data manager") is an Array DBMS, that is: a Database Management System which adds capabilities for storage and retrieval of massive multi-dimensional arrays, such as sensor, image, and statistics data. A frequently used synonym to arrays is raster data, such as in 2-D raster graphics; this actually has motivated the name rasdaman. However, rasdaman has no limitation in the number of dimensions - it can serve, for example, 1-D measurement data, 2-D satellite imagery, 3-D x/y/t image time series and x/y/z exploration data, 4-D ocean and climate data, and even beyond spatio-temporal dimensions.
+# RasDaMan (RASter DAta MANager)
 
-Rasdaman --- СУБД нацеленная на хранение и обработку больших массивов, в первую очередь,
-(гео)изображений, но при этом rasdaman не ограничен двумя размерностями: он может обрабатывать также 1-D
+http://www.rasdaman.org/
+
+RasDaMan --- СУБД нацеленная на хранение и обработку больших массивов, в первую очередь,
+(гео)изображений, но при этом RasDaMan не ограничен двумя размерностями: он может обрабатывать также 1-D
 данные или пространственно-временные 4-D (и выше) данные. 
 
+.center[
+<img src="img/rasdaman.png" width=400  />
+
+Обобщенная архитектура RasDaMan 
+
+(RasDaMan: Installation and Administration Guide, http://www.rasdaman.org/browser/manuals_and_examples/manuals/doc-guides/inst-guide.pdf).
+]
+
+Растры хранятся в реляционной БД (например, PostreSQL) в виде тайлов. Тайлы не обязаны быть
+равных размеров. Также в БД хранятся пространственные индексы. Все это хранится в виде BLOB полей.
+
+---
+# Особенности, плюсы и минусы
+
+Поддерживается:
+1. пространственный анализ и обработка растровых данных (например, растровая алгебра, аггрегационные фукнции, разбиение на тайлы и др.);
+2. анализ растров очень больших размеров, превышающих размеры дискового пространства (hierarchical storage management);
+3. WCS 2.0.
+
+Не поддерживается:
+1. совместный анализ с векторными данными;
+2. отличные от Unix-подобных операционные системы.
+
+Особенности:
+1. Надстройка над БД => собственная клиент-серверная архитектура (свой менеджер и
+пул запросов).
+2. Свой SQL-подобный язык запросов.
+3. Нет своей системы визуализации данных, передача данных клиенту производится на базе сервисов OGC (из
+коробки).
+
+---
+# Примеры
+Создание коллекции (аналог таблицы в БД) mod_2003_12_27 и импорт в нее файла  2003.12.27.tif: 
+```bash
+rasql -q 'insert into mod_2003_12_27 values decode($1)' \ 
+  -f 2003.12.27.tif --user user --passwd password
+```
+
+
+Расчет NDVI с созданием новой коллекции:
+```bash
+rasql -q "select (nir - red)/(nir + red) into ndvi from nir, red" \
+  --user username --passwd password 
+```
+
+Работа с масками и значениями ячеек:
+```bash
+rasql -q \
+  "select e from elev as e, Masks as m  where  some_cells(e > 250 and m)" \
+  --user username --passwd password
+```
+???
 
 
     </textarea>
